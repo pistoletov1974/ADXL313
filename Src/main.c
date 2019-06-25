@@ -109,7 +109,7 @@ int main(void)
   char text[80]="test string from usart";
   int16_t data_filtered;
   float FK=0.07;
-  int16_t data_kalman;    
+  int16_t data_kalman_x,data_kalman_y,data_kalman_z;    
     
   /* USER CODE END 1 */
 
@@ -191,8 +191,12 @@ int main(void)
       printf("0x30:%02x,       x:%d, y:%d, z:%d,  angle X=%.02f  \r\n", (axis.state&0x18), axis.x,axis.y,axis.z,angle);
      // sprintf((char *)&text,"$%d %d %d;",axis.x,axis.y,axis.z);
       data_filtered=median_filter(axis.x);
-      data_kalman=(1-FK)*data_kalman+FK*axis.x;
-      sprintf((char *)&text,"$%d %d %d;",axis.x,data_filtered,data_kalman);
+      data_kalman_x=(1-FK)*data_kalman_x+FK*axis.x;
+      data_kalman_y=(1-FK)*data_kalman_y+FK*axis.y;
+      data_kalman_z=(1-FK)*data_kalman_z+FK*axis.z;
+      
+     // sprintf((char *)&text,"$%d %d %d;",axis.x,data_filtered,data_kalman);
+      sprintf((char *)&text,"$%d %d %d;",data_kalman_x,data_kalman_y,data_kalman_z);
       HAL_UART_Transmit_DMA(&huart2,(uint8_t*)&text,strlen(text));
   }
       
