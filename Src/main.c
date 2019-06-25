@@ -38,14 +38,17 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "stm32f1xx_hal.h"
+#include "dma.h"
 #include "i2c.h"
 #include "tim.h"
+#include "usart.h"
 #include "gpio.h"
-#include "callbacks.h"
-#include <math.h>
 
 /* USER CODE BEGIN Includes */
 #include <stdio.h>
+#include <math.h>
+#include <string.h>
+#include "mediana.h"
 /* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
@@ -101,8 +104,13 @@ int main(void)
   /* USER CODE BEGIN 1 */
     
   struct Axis axis;
-     HAL_StatusTypeDef result;
-     double angle;
+  HAL_StatusTypeDef result;
+  double angle;
+  char text[80]="test string from usart";
+  int16_t data_filtered;
+  float FK=0.07;
+  int16_t data_kalman;    
+    
   /* USER CODE END 1 */
 
   /* MCU Configuration----------------------------------------------------------*/
@@ -123,14 +131,19 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_I2C1_Init();
   MX_TIM1_Init();
+  MX_USART2_UART_Init();
 
   /* USER CODE BEGIN 2 */
     printf("Hello from stm32 printf!\r\n");
+    HAL_UART_Transmit_DMA(&huart2,(uint8_t*) &text, strlen(text));
+    
   
   /* USER CODE END 2 */
-    /* Infinite loop */
+
+  /* Infinite loop */
   /* USER CODE BEGIN WHILE */
    buf[0]= ADXL313_BW_200;
    buf[1]=0x08; //set up bit MEASURE MODE
@@ -140,10 +153,10 @@ int main(void)
   buf[0]=0x09;      //set up 1g range   and full res
   result= HAL_I2C_Mem_Write(&hi2c1,0xA7,0x31,I2C_MEMADD_SIZE_8BIT,buf,1,10000); 
    
-  buf[0]=0x10; //activity threshhold 24 
+  buf[0]=0x02; //activity threshhold 24 
   buf[1]=0x20; //inactivity thresh     25
   buf[2]=0x5; //inativity time;  26
-  buf[3]=0xff; //ac coupled operation om all axes      27
+  buf[3]=0xf0; //ac coupled operation om all axes      27
   result= HAL_I2C_Mem_Write(&hi2c1,0xA7,0x24,I2C_MEMADD_SIZE_8BIT,buf,4,10000);
   
   
@@ -162,6 +175,8 @@ int main(void)
        result= HAL_I2C_Mem_Read(&hi2c1, 0xA6,(uint16_t)0x30,I2C_MEMADD_SIZE_8BIT, buf, 6,1000);
       flag_elapsed=0;
       printf("x:%d, y:%d, z:%d \r\n",axis.x,axis.y,axis.z);
+      sprintf((char *)&text,"$ %d %d %d;",axis.x,axis.y,axis.z);
+      HAL_UART_Transmit_DMA(&huart2,(uint8_t*)&text,strlen(text));
      HAL_TIM_Base_Start_IT(&htim1);
   while (1)
   {
@@ -174,6 +189,11 @@ int main(void)
       flag_elapsed=0;
       angle= atan(axis.x/(sqrt(pow(axis.y,2)+pow(axis.z,2)) ) )*57,296;
       printf("0x30:%02x,       x:%d, y:%d, z:%d,  angle X=%.02f  \r\n", (axis.state&0x18), axis.x,axis.y,axis.z,angle);
+     // sprintf((char *)&text,"$%d %d %d;",axis.x,axis.y,axis.z);
+      data_filtered=median_filter(axis.x);
+      data_kalman=(1-FK)*data_kalman+FK*axis.x;
+      sprintf((char *)&text,"$%d %d %d;",axis.x,data_filtered,data_kalman);
+      HAL_UART_Transmit_DMA(&huart2,(uint8_t*)&text,strlen(text));
   }
       
   }
