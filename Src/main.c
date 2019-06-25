@@ -130,6 +130,8 @@ int main(void)
     printf("Hello from stm32 printf!\r\n");
   
   /* USER CODE END 2 */
+    /* Infinite loop */
+  /* USER CODE BEGIN WHILE */
    buf[0]= ADXL313_BW_200;
    buf[1]=0x08; //set up bit MEASURE MODE
    result= HAL_I2C_Mem_Write(&hi2c1,0xA7,0x2c,I2C_MEMADD_SIZE_8BIT,buf,2,10000);
@@ -156,8 +158,7 @@ int main(void)
    for (int i=0; i<58;i++)   {
    printf("Register %02x = %02x \r\n",i,buf[i]);
    }
-  /* Infinite loop */
-  /* USER CODE BEGIN WHILE */
+
        result= HAL_I2C_Mem_Read(&hi2c1, 0xA6,(uint16_t)0x30,I2C_MEMADD_SIZE_8BIT, buf, 6,1000);
       flag_elapsed=0;
       printf("x:%d, y:%d, z:%d \r\n",axis.x,axis.y,axis.z);
